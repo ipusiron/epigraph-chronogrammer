@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="description" content="碑文や文献に埋め込まれたクロノグラム（ローマ数字による年代表記法）を学習・体験できる解析・生成ツール" />
+  <meta name="keywords" content="chronogram, roman numerals, steganography, classical cryptography, education" />
+  <meta name="author" content="ipusiron" />
+  <title>Epigraph Chronogrammer - クロノグラム解析・生成ツール</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+      <span id="themeIcon">☀️</span>
+    </button>
+    <h1>Epigraph Chronogrammer</h1>
+    <p class="subtitle">碑文や文献に埋め込まれたクロノグラム（ローマ数字による年代表記法）を学習・体験できる</p>
+  </header>
+
+  <main class="container">
+    <nav class="tabs" role="tablist" aria-label="Tabs">
+      <button class="tab active" data-tab="analyze" role="tab" aria-selected="true">解析</button>
+      <button class="tab" data-tab="generate" role="tab" aria-selected="false">生成</button>
+      <button class="tab" data-tab="study" role="tab" aria-selected="false">座学</button>
+    </nav>
+
+    <!-- 解析タブ -->
+    <section id="panel-analyze" class="panel active" role="tabpanel" aria-labelledby="tab-analyze">
+      <div class="panel-body">
+        <div class="flex gap">
+          <div class="flex-1">
+            <div class="input-header">
+              <label for="inputText" class="label">入力テキスト（複数行可）</label>
+              <button id="clearInputBtn" class="btn-clear">クリア</button>
+            </div>
+            <textarea id="inputText" class="textarea" rows="9" maxlength="10000" placeholder="例）franCIs goLDsMIth"></textarea>
+
+            <div class="example-row">
+              <span class="label-sm">例文を試す：</span>
+              <button class="example-btn" data-text="MilLe Domini Christi">例1: MilLe Domini Christi</button>
+              <button class="example-btn" data-text="franCIs goLDsMIth">例2: franCIs goLDsMIth</button>
+            </div>
+
+            <div class="controls">
+              <fieldset class="radio-group">
+                <legend class="radio-legend">抽出方式</legend>
+                <label class="radio">
+                  <input type="radio" name="extractionMode" value="all" checked />
+                  <span>全文字抽出</span>
+                  <span class="help-icon tooltip-wrapper">
+                    <span class="icon">?</span>
+                    <span class="tooltip">すべてのローマ数字（I,V,X,L,C,D,M）を抽出。シンプルで自動解析に適している。</span>
+                  </span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="extractionMode" value="uppercase" />
+                  <span>大文字のみ</span>
+                  <span class="help-icon tooltip-wrapper">
+                    <span class="icon">?</span>
+                    <span class="tooltip">大文字で書かれたローマ数字のみ抽出。碑文で強調された文字のみを数える。</span>
+                  </span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="extractionMode" value="positional" />
+                  <span>位置依存</span>
+                  <span class="help-icon tooltip-wrapper">
+                    <span class="icon">?</span>
+                    <span class="tooltip">行頭・行末のローマ数字のみ抽出。アクロスティック的な意匠が施されたクロノグラムに対応。</span>
+                  </span>
+                </label>
+              </fieldset>
+            </div>
+
+            <fieldset class="year-range-box">
+              <legend class="year-range-legend">西暦の範囲</legend>
+              <div class="range-row">
+                <div class="range-item">
+                  <label for="minYear" class="label-sm">下限（年）</label>
+                  <input id="minYear" type="number" value="1500" min="1" max="9999" class="input" />
+                </div>
+                <div class="range-item">
+                  <label for="maxYear" class="label-sm">上限（年）</label>
+                  <input id="maxYear" type="number" value="2100" min="1" max="9999" class="input" />
+                </div>
+              </div>
+
+              <div class="preset-row">
+                <span class="label-sm">西暦プリセット：</span>
+                <button class="preset-btn" data-range="1500,1600">16世紀</button>
+                <button class="preset-btn" data-range="1600,1700">17世紀</button>
+                <button class="preset-btn" data-range="1700,1800">18世紀</button>
+                <button class="preset-btn" data-range="1900,2000">20世紀</button>
+                <button class="preset-btn" data-range="2000,2100">21世紀</button>
+              </div>
+            </fieldset>
+
+            <div class="btn-row">
+              <button id="analyzeBtn" class="btn primary">解析</button>
+            </div>
+
+            <div id="highlightView" class="highlight-view" aria-live="polite"></div>
+
+            <div class="extraction-section">
+              <div class="section-header">
+                <h2 class="section-title">抽出結果</h2>
+                <button id="copyExtractBtn" class="btn-compact">抽出結果をコピー</button>
+              </div>
+              <div class="card extraction-card">
+                <div id="extractedLetters" class="mono"></div>
+                <div id="letterCounts" class="mono"></div>
+              </div>
+            </div>
+
+            <div class="results-header">
+              <h2 class="results-title">解析結果</h2>
+            </div>
+
+            <div class="results-grid">
+              <div class="card result-card">
+                <h3>
+                  アナグラム方式（候補探索）
+                  <span class="help-icon tooltip-wrapper">
+                    <span class="icon">?</span>
+                    <span class="tooltip">抽出文字の手持ちだけで特定年のローマ数字表記を構成できるかを探索。</span>
+                  </span>
+                </h3>
+                <div id="anagramSummary" class="mono"></div>
+                <div id="anagramCandidates" class="tags"></div>
+              </div>
+              <div class="card result-card">
+                <h3>
+                  合計方式（歴史的クロノグラム）
+                  <span class="help-icon tooltip-wrapper">
+                    <span class="icon">?</span>
+                    <span class="tooltip">抽出文字を数値化し合計（I=1, V=5, X=10, L=50, C=100, D=500, M=1000）。</span>
+                  </span>
+                </h3>
+                <div id="sumBreakdown" class="mono"></div>
+                <div id="sumTotal" class="big-num"></div>
+                <div id="sumRoman" class="mono faint"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 生成タブ -->
+    <section id="panel-generate" class="panel" role="tabpanel" aria-labelledby="tab-generate">
+      <div class="panel-body">
+        <div class="flex gap">
+          <div class="flex-1">
+            <div class="range-row">
+              <div class="range-item">
+                <label for="yearToMake" class="label">年号（西暦）</label>
+                <input id="yearToMake" type="number" value="2025" min="1" max="9999" class="input" />
+              </div>
+            </div>
+            <div class="btn-row">
+              <button id="makeChronogramBtn" class="btn primary">文章を生成</button>
+              <button id="copyGeneratedBtn" class="btn">文例をコピー</button>
+            </div>
+
+            <div id="romanForYear" class="mono big-num"></div>
+
+            <div class="gen-grid" id="generatedExamples">
+              <!-- 生成例カードをJSで挿入 -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 座学タブ -->
+    <section id="panel-study" class="panel" role="tabpanel" aria-labelledby="tab-study">
+      <div class="panel-body">
+        <article class="prose">
+          <div class="accordion-section">
+            <button class="accordion-header" data-section="section1">
+              <span>クロノグラムとは</span>
+              <span class="accordion-icon">▼</span>
+            </button>
+            <div class="accordion-content" data-content="section1">
+              <p>
+                テキスト中に現れるローマ数字（I, V, X, L, C, D, M）の<strong>数値の合計</strong>で年号（西暦）を示す表現です。
+                ルネサンス〜バロック期（16〜18世紀）に碑文や書籍の刊行年を示す目的で盛んに用いられました。
+              </p>
+            </div>
+          </div>
+
+          <div class="accordion-section">
+            <button class="accordion-header" data-section="section2">
+              <span>ローマ数字による年代表記法</span>
+              <span class="accordion-icon">▼</span>
+            </button>
+            <div class="accordion-content" data-content="section2">
+              <h3>基本記号と値</h3>
+              <ul>
+                <li>I = 1</li>
+                <li>V = 5</li>
+                <li>X = 10</li>
+                <li>L = 50</li>
+                <li>C = 100</li>
+                <li>D = 500</li>
+                <li>M = 1000</li>
+              </ul>
+
+              <h3>加算方式</h3>
+              <p>文字を左から右へ並べ、それぞれの値を合計して表記する。</p>
+              <p>例：</p>
+              <ul>
+                <li>VIII = 5 + 1 + 1 + 1 = 8</li>
+                <li>LX = 50 + 10 = 60</li>
+              </ul>
+
+              <h3>減算方式（サブトラクティブ・ノーテーション）</h3>
+              <p>大きな数字の左に小さな数字が置かれると「引く」意味になる。</p>
+              <p>例：</p>
+              <ul>
+                <li>IV = 5 − 1 = 4</li>
+                <li>IX = 10 − 1 = 9</li>
+                <li>XL = 50 − 10 = 40</li>
+                <li>CM = 1000 − 100 = 900</li>
+              </ul>
+
+              <h3>年号表記の慣例</h3>
+              <p>西暦はローマ数字で表記されることが多く、碑文・公文書・教会建築などに残っている。</p>
+              <p>例：</p>
+              <ul>
+                <li>1600 = MDC</li>
+                <li>1666 = MDCLXVI</li>
+                <li>2025 = MMXXV</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="accordion-section">
+            <button class="accordion-header" data-section="section3">
+              <span>歴史的利用と文化</span>
+              <span class="accordion-icon">▼</span>
+            </button>
+            <div class="accordion-content" data-content="section3">
+              <h3>碑文・建築物での利用</h3>
+              <p>
+                16〜18世紀のヨーロッパで盛んに利用され、石碑や建築物の銘文に年号を隠す形で用いられました。
+                ドイツやイタリアの教会に刻まれた碑文では、ローマ数字の合計が建立年を表す事例が数多く残されています。
+              </p>
+
+              <h3>書籍刊行年の暗示</h3>
+              <p>
+                初版・刊行年を直接明示せず、クロノグラムで「隠す」手法が近世ヨーロッパの印刷文化で利用されました。
+                検閲回避や遊戯的な装飾として機能していました。
+              </p>
+
+              <h3>文学・詩的表現</h3>
+              <p>
+                クロノグラムはアクロスティックと並び、修辞的な遊びとして使われました。
+                詩や謎掛けで、作者名や記念年を暗示する手法が好まれました。
+              </p>
+            </div>
+          </div>
+
+          <div class="accordion-section">
+            <button class="accordion-header" data-section="section4">
+              <span>関連する隠し文字技法</span>
+              <span class="accordion-icon">▼</span>
+            </button>
+            <div class="accordion-content" data-content="section4">
+              <h3>アクロスティック（Acrostic）</h3>
+              <p>
+                詩や文章の各行の先頭文字を縦に読むと、特定の単語や意味が浮かび上がる修辞的表現。
+                クロノグラム同様「通常の読み方とは異なる規則」で別の意味を隠します。
+              </p>
+
+              <h3>隠文式暗号</h3>
+              <p>
+                文章の特定の位置（行頭・行末・一定間隔など）を抜き出して隠された情報を得る暗号方式。
+                アクロスティックを暗号的に利用したものとみなせます。クロノグラムも「特定文字のみを抜き出す」という点でこの系譜に連なります。
+              </p>
+
+              <h3>ステガノグラフィー</h3>
+              <p>
+                「情報が隠されていること自体を秘匿する」技術の総称。
+                アクロスティックやクロノグラムは、古典的ステガノグラフィーの具体例と位置づけられます。
+                現代の電子透かしやメタデータ隠しと通じる概念です。
+              </p>
+            </div>
+          </div>
+
+          <div class="accordion-section">
+            <button class="accordion-header" data-section="section5">
+              <span>現代への応用可能性</span>
+              <span class="accordion-icon">▼</span>
+            </button>
+            <div class="accordion-content" data-content="section5">
+              <h3>自然言語処理との組み合わせ</h3>
+              <p>
+                AIを用いて、指定年号を満たすクロノグラム文を自動生成できます。
+                GPTやLLMはローマ数字の制約を満たす文章生成に強みを発揮します。
+                「意味のある文章で、かつ特定の数値条件を満たす」制約付き生成の課題に応用可能です。
+              </p>
+
+              <h3>デジタル署名・ウォーターマーク</h3>
+              <p>
+                文書や記事の発行年を直接書かず、クロノグラム的に隠すことで「作者性」や「生成年」の痕跡を残せます。
+                生成AI時代における「文章への不可視ウォーターマーク」の歴史的比喩・教育モデルとして応用可能です。
+              </p>
+
+              <h3>セキュリティ教育ツール</h3>
+              <p>
+                クロノグラムは「平文に隠されたパターンを見抜く」練習問題として利用できます。
+                暗号史だけでなく、現代のソーシャルエンジニアリングやステガノグラフィー理解に繋がる教材になります。
+              </p>
+
+              <h3>デジタル人文学への応用</h3>
+              <p>
+                OCRやNLPを利用して「クロノグラムを含む文献から年代を自動抽出」する研究が可能です。
+                デジタル人文学における史料解析手法としての拡張が考えられます。
+              </p>
+            </div>
+          </div>
+
+          <div class="accordion-section">
+            <button class="accordion-header" data-section="section6">
+              <span>本ツールについて</span>
+              <span class="accordion-icon">▼</span>
+            </button>
+            <div class="accordion-content" data-content="section6">
+              <h3>デフォルト範囲（1500–2100）について</h3>
+              <ul>
+                <li><strong>下限1500年</strong>：クロノグラムが特に流行したのは16世紀以降で、事例の多くが1500年代〜1700年代に集中するため。</li>
+                <li><strong>上限2100年</strong>：現代〜近未来の学習用途を想定し、過度な未来年号を避けるため。</li>
+                <li>必要に応じて解析タブで範囲を任意に設定できます。</li>
+              </ul>
+
+              <h3>ツール名の由来</h3>
+              <p>
+                <strong>Epigraph</strong> は「碑文・銘文」を意味し、歴史的にクロノグラムが刻まれた媒体を象徴します。
+                <strong>Chronogrammer</strong> は「クロノグラムを扱う人／生成するもの」を指す造語で、programmer の語感も重ねています。
+                両者を合わせて「碑文に刻まれたクロノグラムを発見・生成・解読する職人工具」というニュアンスを込めています。
+              </p>
+
+              <h3>セキュリティ的示唆</h3>
+              <p>
+                クロノグラムは古典的ステガノグラフィーの一形態です。現代でも「一見自然なテキスト」に数値情報を埋め込む発想は、
+                教育やデモンストレーションに有用です（ただし実運用の秘匿には適しません）。
+              </p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer">
+      🔗 GitHubリポジトリはこちら（
+      <a href="https://github.com/ipusiron/epigraph-chronogrammer" target="_blank">ipusiron/epigraph-chronogrammer</a>
+      ）
+    </div>
+  </footer>
+
+  <script src="./script.js"></script>
+</body>
+</html>
