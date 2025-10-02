@@ -41,11 +41,22 @@ function countLetters(str, filterToRoman=true){
 }
 
 // Check if romanStr can be formed from available roman letter counts
-function canFormFromCounts(romanStr, availableCounts){
+// mode: 'subset' (default) allows partial use, 'exact' requires all letters to be used
+function canFormFromCounts(romanStr, availableCounts, mode='subset'){
   const need = countLetters(romanStr, false);
+
+  // Check if we have enough of each needed letter
   for(const k in need){
     if(!availableCounts[k] || availableCounts[k] < need[k]) return false;
   }
+
+  // If exact mode, check that all available letters are used
+  if(mode === 'exact'){
+    for(const k in availableCounts){
+      if(availableCounts[k] !== (need[k] || 0)) return false;
+    }
+  }
+
   return true;
 }
 
@@ -168,24 +179,46 @@ function escapeHtml(s){
 }
 
 // ====== Sum (historical chronogram) ======
-function sumRomanLetters(letters){
+// mode: 'addition' (default) - simple sum, 'subtraction' - apply roman numeral subtraction rules
+function sumRomanLetters(letters, mode='addition'){
   let sum = 0;
   const steps = [];
-  for(const ch of letters){
-    const v = ROMAN_VALUES[ch] || 0;
-    sum += v;
-    steps.push(`${ch}=${v}`);
+
+  if(mode === 'subtraction'){
+    // Apply subtractive notation rules (IV=4, IX=9, XL=40, XC=90, CD=400, CM=900)
+    for(let i = 0; i < letters.length; i++){
+      const current = ROMAN_VALUES[letters[i]] || 0;
+      const next = i + 1 < letters.length ? (ROMAN_VALUES[letters[i+1]] || 0) : 0;
+
+      if(current < next){
+        // Subtraction case: smaller value before larger
+        sum -= current;
+        steps.push(`${letters[i]}=-${current}`);
+      } else {
+        // Addition case
+        sum += current;
+        steps.push(`${letters[i]}=+${current}`);
+      }
+    }
+  } else {
+    // Simple addition (historical chronogram method)
+    for(const ch of letters){
+      const v = ROMAN_VALUES[ch] || 0;
+      sum += v;
+      steps.push(`${ch}=${v}`);
+    }
   }
+
   return { sum, steps };
 }
 
 // ====== Anagram search ======
-function findAnagramYears(availableCounts, minYear, maxYear, maxShow=10){
+function findAnagramYears(availableCounts, minYear, maxYear, maxShow=10, mode='subset'){
   const found = [];
   for(let y = Math.max(1, minYear); y <= Math.max(minYear, maxYear); y++){
     const roman = intToRoman(y);
     if(!roman) continue;
-    if(canFormFromCounts(roman, availableCounts)){
+    if(canFormFromCounts(roman, availableCounts, mode)){
       found.push({ year:y, roman });
       if(found.length >= maxShow) break;
     }
@@ -322,8 +355,16 @@ updateButtonStates();
 // Update button states on input change
 $('#inputText').addEventListener('input', updateButtonStates);
 
-// Analyze
-$('#analyzeBtn').addEventListener('click', ()=>{
+// Store extracted data for recomputation
+let extractedData = {
+  letters: [],
+  counts: {},
+  minYear: 1500,
+  maxYear: 2100
+};
+
+// Main analysis function
+function performAnalysis(){
   const text = $('#inputText').value || "";
 
   // Input validation: limit text length to prevent DoS
@@ -355,34 +396,81 @@ $('#analyzeBtn').addEventListener('click', ()=>{
   const countsStr = ROMAN_KEYS.map(k=>`${k}:${counts[k]}`).join('  ');
   $('#letterCounts').textContent = countsStr;
 
-  // Sum method
-  const { sum, steps } = sumRomanLetters(letters);
-  $('#sumBreakdown').textContent = steps.length ? steps.join(' + ') : '（該当なし）';
-  $('#sumTotal').textContent = steps.length ? `合計 = ${sum}` : '合計 = 0';
-  $('#sumRoman').textContent = steps.length ? `（ローマ数字換算） ${intToRoman(sum)}` : '';
+  // Store extracted data for later recomputation
+  extractedData = { letters, counts, minYear, maxYear };
 
-  // Anagram method (always enabled)
-  if(letters.length){
-    const av = counts; // available counts
-    const candidates = findAnagramYears(av, minYear, maxYear, 12);
-    $('#anagramSummary').textContent = candidates.length
-      ? `候補: ${candidates.length}件（表示上限12件）`
-      : `候補なし（範囲: ${minYear}–${maxYear}）`;
-    const box = $('#anagramCandidates');
-    box.innerHTML = "";
-    candidates.forEach(c=>{
-      const tag = document.createElement('span');
-      tag.className = 'tag good mono';
-      tag.textContent = `${c.year} = ${c.roman}`;
-      box.appendChild(tag);
-    });
-  }else{
-    $('#anagramSummary').textContent = '（抽出なしのため探索をスキップ）';
-    $('#anagramCandidates').innerHTML = "";
-  }
+  // Update results with current modes
+  updateResults();
 
   // Update button states after analysis
   updateButtonStates();
+}
+
+// Update results based on current mode settings
+function updateResults(){
+  const anagramMode = document.querySelector('input[name="anagramMode"]:checked').value;
+  const { letters, counts, minYear, maxYear } = extractedData;
+
+  // Show/hide mode selectors based on whether we have results
+  const anagramModeSelector = document.querySelector('.card.result-card:nth-child(1) .radio-group');
+  const sumResultsContainer = document.querySelectorAll('.card.result-card:nth-child(2) > div');
+
+  if(letters.length === 0){
+    // Hide mode selector and results for anagram
+    if(anagramModeSelector) anagramModeSelector.style.display = 'none';
+    $('#anagramSummary').textContent = '';
+    $('#anagramCandidates').innerHTML = '';
+
+    // Hide results for sum
+    sumResultsContainer.forEach(el => {
+      if(!el.tagName || el.querySelector('h3')) return; // Skip if it's the h3 title
+      el.style.display = 'none';
+    });
+    $('#sumBreakdown').textContent = '';
+    $('#sumTotal').textContent = '';
+    $('#sumRoman').textContent = '';
+    return;
+  }
+
+  // Show mode selector and results
+  if(anagramModeSelector) anagramModeSelector.style.display = '';
+  sumResultsContainer.forEach(el => {
+    if(!el.tagName || el.querySelector('h3')) return;
+    el.style.display = '';
+  });
+
+  // Sum method (addition only)
+  const { sum, steps } = sumRomanLetters(letters, 'addition');
+  $('#sumBreakdown').textContent = steps.join(' + ');
+  $('#sumTotal').textContent = `合計 = ${sum}`;
+  $('#sumRoman').textContent = `（ローマ数字換算） ${intToRoman(sum)}`;
+
+  // Anagram method (with mode)
+  const av = counts; // available counts
+  const candidates = findAnagramYears(av, minYear, maxYear, 12, anagramMode);
+  $('#anagramSummary').textContent = candidates.length
+    ? `候補: ${candidates.length}件（表示上限12件）`
+    : `候補なし（範囲: ${minYear}–${maxYear}）`;
+  const box = $('#anagramCandidates');
+  box.innerHTML = "";
+  candidates.forEach(c=>{
+    const tag = document.createElement('span');
+    tag.className = 'tag good mono';
+    tag.textContent = `${c.year} = ${c.roman}`;
+    box.appendChild(tag);
+  });
+}
+
+// Analyze button
+$('#analyzeBtn').addEventListener('click', performAnalysis);
+
+// Listen for mode changes and update results in real-time
+document.querySelectorAll('input[name="anagramMode"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    if(extractedData.letters.length > 0){
+      updateResults();
+    }
+  });
 });
 
 $('#copyExtractBtn').addEventListener('click', async ()=>{

@@ -48,7 +48,7 @@
               <fieldset class="radio-group">
                 <legend class="radio-legend">抽出方式</legend>
                 <label class="radio">
-                  <input type="radio" name="extractionMode" value="all" checked />
+                  <input type="radio" name="extractionMode" value="all" />
                   <span>全文字抽出</span>
                   <span class="help-icon tooltip-wrapper">
                     <span class="icon">?</span>
@@ -56,11 +56,11 @@
                   </span>
                 </label>
                 <label class="radio">
-                  <input type="radio" name="extractionMode" value="uppercase" />
+                  <input type="radio" name="extractionMode" value="uppercase" checked />
                   <span>大文字のみ</span>
                   <span class="help-icon tooltip-wrapper">
                     <span class="icon">?</span>
-                    <span class="tooltip">大文字で書かれたローマ数字のみ抽出。碑文で強調された文字のみを数える。</span>
+                    <span class="tooltip">大文字で書かれたローマ数字のみ抽出。碑文で強調された文字のみを数える。歴史的クロノグラムの標準的手法です。</span>
                   </span>
                 </label>
                 <label class="radio">
@@ -121,26 +121,45 @@
             <div class="results-grid">
               <div class="card result-card">
                 <h3>
-                  アナグラム方式（候補探索）
+                  アナグラム方式
                   <span class="help-icon tooltip-wrapper">
                     <span class="icon">?</span>
                     <span class="tooltip">抽出文字の手持ちだけで特定年のローマ数字表記を構成できるかを探索。</span>
                   </span>
                 </h3>
-                <div id="anagramSummary" class="mono"></div>
+                <fieldset class="radio-group">
+                  <legend class="radio-legend">マッチング方式</legend>
+                  <label class="radio">
+                    <input type="radio" name="anagramMode" value="subset" checked />
+                    <span>部分集合</span>
+                    <span class="help-icon tooltip-wrapper">
+                      <span class="icon">?</span>
+                      <span class="tooltip">抽出文字の一部を使って年号を構成可能な候補をすべて表示。歴史的クロノグラムでは通常こちらが用いられました（余剰文字は無視される）。</span>
+                    </span>
+                  </label>
+                  <label class="radio">
+                    <input type="radio" name="anagramMode" value="exact" />
+                    <span>完全一致</span>
+                    <span class="help-icon tooltip-wrapper">
+                      <span class="icon">?</span>
+                      <span class="tooltip">抽出文字をすべて使い切って年号を構成できる候補のみ表示（厳密なアナグラム）。歴史的にはまれな手法です。</span>
+                    </span>
+                  </label>
+                </fieldset>
+                <div id="anagramSummary" class="result-summary mono"></div>
                 <div id="anagramCandidates" class="tags"></div>
               </div>
               <div class="card result-card">
                 <h3>
-                  合計方式（歴史的クロノグラム）
+                  合計方式
                   <span class="help-icon tooltip-wrapper">
                     <span class="icon">?</span>
                     <span class="tooltip">抽出文字を数値化し合計（I=1, V=5, X=10, L=50, C=100, D=500, M=1000）。</span>
                   </span>
                 </h3>
-                <div id="sumBreakdown" class="mono"></div>
-                <div id="sumTotal" class="big-num"></div>
-                <div id="sumRoman" class="mono faint"></div>
+                <div id="sumBreakdown" class="result-summary mono"></div>
+                <div id="sumTotal" class="result-value mono"></div>
+                <div id="sumRoman" class="result-detail mono"></div>
               </div>
             </div>
           </div>

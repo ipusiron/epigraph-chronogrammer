@@ -545,8 +545,39 @@ body{
 .result-card h3{
   color:var(--accent-2);
   font-size:1.15rem;
+  margin-top:0;
+  margin-bottom:14px;
 }
 .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+.result-summary{
+  font-size:0.95rem;
+  color:var(--text);
+  margin:12px 0 8px 0;
+  padding:8px 12px;
+  background:var(--panel-2);
+  border-radius:8px;
+  border:1px solid var(--border);
+}
+.result-value{
+  font-size:1.6rem;
+  margin:12px 0;
+  font-weight:700;
+  color:var(--accent);
+  padding:16px;
+  background:var(--panel-2);
+  border:2px solid var(--accent);
+  border-radius:8px;
+  text-align:center;
+}
+.result-detail{
+  font-size:0.9rem;
+  color:var(--muted);
+  margin:8px 0;
+  padding:8px 12px;
+  background:var(--panel-2);
+  border-radius:8px;
+  text-align:center;
+}
 .big-num{
   font-size:1.6rem;
   margin-top:12px;
