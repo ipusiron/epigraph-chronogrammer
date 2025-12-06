@@ -27,28 +27,36 @@ The tool is a single-page web application with three main tabs:
 
 ## Key Architecture
 
-### Roman Numeral System (`script.js:1-50`)
+### Roman Numeral System (`script.js:1-61`)
 
 - `ROMAN_VALUES`: Mapping of letter to integer value (I=1, V=5, X=10, L=50, C=100, D=500, M=1000)
 - `intToRoman()`: Converts integer year to canonical Roman numeral using subtractive notation (e.g., 2025 → MMXXV)
 - `countLetters()`: Counts frequency of each Roman letter in a string
-- `canFormFromCounts()`: Checks if a target year's Roman representation can be formed from available letters (anagram logic)
+- `canFormFromCounts()`: Checks if a target year's Roman representation can be formed from available letters (supports `subset` and `exact` modes)
+
+### Extraction Modes (`script.js:63-121`)
+
+Three extraction modes are supported:
+- **all**: Extract all Roman numeral letters (I, V, X, L, C, D, M) regardless of case
+- **uppercase**: Only extract uppercase Roman letters (historical standard)
+- **positional**: Extract letters at line start/end positions (acrostic-style)
 
 ### Two Analysis Methods
 
-1. **Sum Method** (`script.js:85-95`): Historical approach—simply adds all Roman numeral values in order
-2. **Anagram Method** (`script.js:97-109`): Searches for valid years (default 1500-2100) that can be formed by rearranging extracted letters
+1. **Sum Method** (`script.js:183-213`): Historical approach—adds all Roman numeral values (supports both simple addition and subtractive notation)
+2. **Anagram Method** (`script.js:216-227`): Searches for valid years (default 1500-2100) that can be formed by rearranging extracted letters
 
 ### UI Event Flow
 
-- Tab switching: Updates `.active` class on both tab buttons and panels (`script.js:115-124`)
-- Analyze button (`script.js:127-175`):
-  1. Extract Roman letters from input text
-  2. Display highlighted version of text
-  3. Show letter counts
-  4. Compute sum method result
-  5. If anagram enabled, search year range for valid candidates
-- Generate button (`script.js:203-228`): Creates 5 sample sentences with the target year's Roman numerals dispersed and highlighted
+- Tab switching: Updates `.active` class on both tab buttons and panels (`script.js:276-284`)
+- `performAnalysis()` (`script.js:367-407`):
+  1. Validate and sanitize input (max 10,000 chars)
+  2. Highlight Roman letters in text based on extraction mode
+  3. Extract and count letters
+  4. Store extracted data for mode changes
+  5. Call `updateResults()` to compute both methods
+- `updateResults()` (`script.js:410-462`): Computes sum and anagram results, responds to mode changes in real-time
+- Generate button (`script.js:507-566`): Creates sample sentences with the target year's Roman numerals dispersed and highlighted
 
 ## Development Commands
 
@@ -65,9 +73,10 @@ Since this is a static site with no build process:
 ## Important Design Decisions
 
 - **Year range 1500-2100**: Historical chronograms are most common from 1500s-1700s; upper bound extends to near future for educational purposes
-- **Anagram ON by default**: More interesting pedagogically than simple summation
+- **Uppercase extraction default**: Historical chronograms typically used uppercase letters as significant; this is the default mode
 - **No external dependencies**: Maximizes portability and educational clarity
-- **Uppercase-only option**: Some historical chronograms used only uppercase letters as significant
+- **Real-time mode switching**: Anagram mode (subset/exact) can be changed after analysis without re-running extraction
+- **Input validation**: Text input limited to 10,000 characters to prevent DoS; year inputs validated for 1-9999 range
 
 ## Security Context
 
@@ -77,3 +86,9 @@ This tool demonstrates classical steganography—hiding information (year) in pl
 - Potential analogy to modern watermarking/steganography in AI-generated text
 
 The README extensively discusses applications to security education, NLP constraint generation, and digital humanities.
+
+## CSS Architecture
+
+- CSS custom properties (`style.css:1-25`) define theme colors for dark/light modes
+- Theme switching via `data-theme` attribute on body element
+- Responsive breakpoint at 980px for mobile layout

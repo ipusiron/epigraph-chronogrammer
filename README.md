@@ -1,11 +1,38 @@
 <!--
 ---
-title: Epigraph Chronogrammer
-category: classical-cryptography
+id: day086
+slug: epigraph-chronogrammer
+
+title: "Epigraph Chronogrammer"
+
+subtitle_ja: "クロノグラム解析・生成ツール"
+subtitle_en: "Chronogram Analyzer & Generator"
+
+description_ja: "碑文や文献に埋め込まれたクロノグラム（ローマ数字による年代表記法）を解析・生成できる教育ツール。ローマ数字の抽出、隠された年号の算出、クロノグラム文の自動生成機能を搭載。"
+description_en: "Educational tool for analyzing and generating chronograms—texts where Roman numerals encode hidden years. Extract Roman numerals, compute embedded dates, and generate chronogram sentences."
+
+category_ja:
+  - 古典暗号
+  - ステガノグラフィー
+category_en:
+  - Classical Cryptography
+  - Steganography
+
 difficulty: 1
-description: Educational tool to explore chronograms: extract Roman numerals, compute hidden years, and generate texts with embedded dates.
-tags: [chronogram, roman-numerals, classical-crypto, education, visualization, javascript]
-demo: https://ipusiron.github.io/epigraph-chronogrammer/
+
+tags:
+  - chronogram
+  - roman-numerals
+  - steganography
+  - classical-crypto
+  - education
+  - visualization
+  - javascript
+
+repo_url: "https://github.com/ipusiron/epigraph-chronogrammer"
+demo_url: "https://ipusiron.github.io/epigraph-chronogrammer/"
+
+hub: true
 ---
 -->
 
@@ -88,7 +115,7 @@ demo: https://ipusiron.github.io/epigraph-chronogrammer/
 
 ### 歴史的利用
 
-ルネサンス〜バロック期（16〜18世紀）に特に流行し、碑文や建築物の銘文、書籍の刊行年表示として利用されました。  
+ルネサンス〜バロック期（16〜18世紀）に流行し、碑文や建築物の銘文、書籍の刊行年表示として利用されました。  
 
 クロノグラムは単なる修辞的遊びではなく、時に検閲回避や象徴的意味付けの役割を担いました。
 
