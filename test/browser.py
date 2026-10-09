@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import threading
 from playwright.sync_api import sync_playwright
+from composer_browser import check_composer
 
 ROOT = Path(__file__).resolve().parents[1]
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -80,8 +81,9 @@ try:
                         page.locator('#yearToMake').fill('2025')
                         assert page.locator('#copyGeneratedBtn').is_disabled()
                         assert page.locator('#generatedExamples').inner_text() == ''
+                        check_composer(page)
                         if '--layout' in sys.argv:
-                            for tab in ['analyze', 'generate', 'study']:
+                            for tab in ['analyze', 'generate', 'compose', 'study']:
                                 page.locator('#tab-' + tab).click()
                                 page.locator('#panel-' + tab + ' details').evaluate_all('(els)=>els.forEach(e=>e.open=true)')
                                 dims = page.evaluate('({inner:innerWidth, scroll:document.documentElement.scrollWidth})')
