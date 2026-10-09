@@ -30,11 +30,12 @@
   function localize() {
     document.documentElement.lang = language;
     document.title = t('pageTitle');
+    $('meta[name="description"]').content = t('subtitle');
     $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
     $$('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', t(el.dataset.i18nAria)));
     $$('[data-century]').forEach(el => { el.textContent = t('century', { n: el.dataset.century }); });
     $('#inputText').placeholder = t('placeholder');
-    $('#languageToggle').textContent = language === 'ja' ? 'English' : '日本語';
+    $('#languageToggle').textContent = t('languageSwitch');
     $('#languageToggle').lang = language === 'ja' ? 'en' : 'ja';
     themeLabel();
     render();
@@ -158,5 +159,6 @@
     language = language === 'ja' ? 'en' : 'ja';
     preferences.write('language', language); localize();
   });
+  $('#languageToggle').hidden = false;
   localize();
 })();
