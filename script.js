@@ -2,6 +2,8 @@
   'use strict';
   const core = window.ChronogramCore, store = window.ChronogramState.create();
   const preferences = window.ChronogramPreferences;
+  const composer = window.ChronogramComposer, editor = window.ChronogramEditor.create();
+  let composePage = 0, composing = false, uiRevision = 0, activeLetter = 0;
   let language = preferences.language;
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
@@ -28,6 +30,7 @@
     $('#themeToggle').textContent = t(key);
   }
   function localize() {
+    uiRevision++;
     document.documentElement.lang = language;
     document.title = t('pageTitle');
     $('meta[name="description"]').content = t('subtitle');
@@ -91,20 +94,112 @@
       const copy = node('button', t('copyOne'));
       copy.type = 'button';
       copy.addEventListener('click', () => copyText(sample.text));
-      card.append(copy);
+      const actions = node('div', '', 'btn-row');
+      actions.append(copy);
+      for (const [label, destination] of [['editExample', 'compose'], ['analyzeExample', 'analyze']]) {
+        const transfer = node('button', t(label));
+        transfer.type = 'button';
+        transfer.dataset.destination = destination;
+        transfer.addEventListener('click', () => transferExample(sample.text, result.year, destination));
+        actions.append(transfer);
+      }
+      card.append(actions);
       $('#generatedExamples').append(card);
     });
   }
-  function render() { renderAnalysis(); renderGenerated(); $('#copyStatus').textContent = ''; }
+  function transferExample(text, year, destination) {
+    if (destination === 'compose') {
+      const current = editor.read().input;
+      if (current.text && (current.text !== text || current.year !== String(year)) && !window.confirm(t('replaceDraft'))) return;
+      editor.replace(text, String(year)); composePage = 0;
+      syncEditorInputs(); renderComposer(); selectTab('compose'); $('#composeText').focus();
+    } else {
+      const current = store.read().input.text;
+      if (current && current !== text && !window.confirm(t('replaceAnalysis'))) return;
+      $('#inputText').value = text;
+      $('input[name="extractionMode"][value="uppercase"]').checked = true;
+      store.set('text', text); store.set('mode', 'uppercase');
+      // Invalidate even when the identical example was already analyzed.
+      store.clear(); store.set('text', text);
+      renderAnalysis(); selectTab('analyze'); $('#inputText').focus();
+      $('#analysisStatus').textContent = t('transferAnalysis');
+    }
+    uiRevision++; $('#copyStatus').textContent = '';
+  }
+  function syncEditorInputs() {
+    const input = editor.read().input;
+    $('#composeText').value = input.text; $('#composeYear').value = input.year;
+  }
+  function renderComposer() {
+    const state = editor.read(), result = composing ? null : state.result;
+    $('#composeUndo').disabled = composing || !state.canUndo;
+    $('#composeClear').disabled = composing || (!state.input.text && !state.canUndo);
+    $('#composeCopy').disabled = composing || !state.input.text || state.input.text.length > core.LIMIT;
+    $('#composeMemoCopy').disabled = !result;
+    $('#composeStatus').classList.toggle('error', Boolean(state.error) && !composing);
+    $('#composeYear').setAttribute('aria-invalid', String(state.error === 'invalidYear'));
+    $('#composeText').setAttribute('aria-invalid', String(state.error === 'tooLong'));
+    const status = result ? { short: 'composeShort', over: 'composeOver', matched: 'composeMatched' }[result.status] : '';
+    $('#composeStatus').textContent = composing ? t('composing') : state.error ? t(state.error)
+      : result ? t(status, { ...result, amount: Math.abs(result.difference) }) : t('composeEmpty');
+    $('#composeHint').textContent = result && result.hint ? t('composeHint', { letters: result.hint.split('').join(' + ') }) : '';
+    $('#composeCounts').textContent = result ? core.KEYS.map(k => `${k}: ${result.counts[k]}`).join(' / ') : '';
+    $('#composeMemo').value = result ? t('memoFormat', {
+      ...result, mode: t('uppercase'), letters: result.letters || '—', limit: t('composeLimits')
+    }) : '';
+    const target = $('#composePreview'); target.replaceChildren();
+    $('#composePaging').hidden = true;
+    if (composing || state.input.text.length > core.LIMIT) return;
+    const first = composer.preview(state.input.text);
+    composePage = Math.min(composePage, first.pages - 1);
+    const part = composer.preview(state.input.text, composePage);
+    let start = part.start;
+    part.positions.forEach((position, index) => {
+      target.append(document.createTextNode(state.input.text.slice(start, position)));
+      const letter = state.input.text[position], control = node('button', letter, 'letter-control');
+      control.type = 'button'; control.dataset.position = String(position);
+      control.tabIndex = index === Math.min(activeLetter, part.positions.length - 1) ? 0 : -1;
+      control.setAttribute('aria-pressed', String(letter === letter.toUpperCase()));
+      control.setAttribute('aria-label', t('letterControl', {
+        n: part.offset + index + 1, letter, value: core.VALUES[letter.toUpperCase()]
+      }));
+      control.addEventListener('click', () => {
+        activeLetter = index;
+        const input = $('#composeText'), selection = [input.selectionStart, input.selectionEnd, input.selectionDirection];
+        editor.toggle(position); syncEditorInputs(); renderComposer();
+        input.setSelectionRange(...selection);
+        $(`#composePreview [data-position="${position}"]`).focus();
+        $('#copyStatus').textContent = '';
+      });
+      control.addEventListener('keydown', event => {
+        const next = { ArrowRight: Math.min(index + 1, part.positions.length - 1),
+          ArrowLeft: Math.max(index - 1, 0), Home: 0, End: part.positions.length - 1 }[event.key];
+        if (next === undefined) return;
+        event.preventDefault(); activeLetter = next;
+        const controls = $$('#composePreview button');
+        controls.forEach((button, i) => { button.tabIndex = i === next ? 0 : -1; });
+        controls[next].focus();
+      });
+      target.append(control); start = position + 1;
+    });
+    target.append(document.createTextNode(state.input.text.slice(start, part.end)));
+    $('#composePaging').hidden = part.pages < 2;
+    $('#composePrevious').disabled = composePage === 0;
+    $('#composeNext').disabled = composePage === part.pages - 1;
+    $('#composePageInfo').textContent = t('pageInfo', {
+      first: part.offset + 1, last: part.offset + part.positions.length, total: part.total
+    });
+  }
+  function render() { renderAnalysis(); renderGenerated(); renderComposer(); $('#copyStatus').textContent = ''; }
   function change(key, value) { store.set(key, value); render(); }
   async function copyText(text) {
-    const revision = store.read().revision;
+    const revision = `${store.read().revision}/${editor.read().revision}/${uiRevision}`;
     let key = 'copied';
     try {
       if (!navigator.clipboard || !window.isSecureContext) throw new Error('clipboard');
       await navigator.clipboard.writeText(text);
     } catch (_) { key = 'copyFailed'; }
-    if (revision === store.read().revision) $('#copyStatus').textContent = t(key);
+    if (revision === `${store.read().revision}/${editor.read().revision}/${uiRevision}`) $('#copyStatus').textContent = t(key);
   }
   function selectTab(name, focus = false) {
     $$('[role="tab"]').forEach(tab => {
@@ -160,5 +255,31 @@
     preferences.write('language', language); localize();
   });
   $('#languageToggle').hidden = false;
+  function editDraft(field, value) {
+    editor.set(field, value); composePage = 0; activeLetter = 0; renderComposer(); $('#copyStatus').textContent = '';
+  }
+  $('#composeText').addEventListener('compositionstart', () => { composing = true; uiRevision++; renderComposer(); });
+  $('#composeText').addEventListener('compositionend', event => { composing = false; editDraft('text', event.target.value); });
+  $('#composeText').addEventListener('input', event => {
+    if (!event.isComposing && !composing) editDraft('text', event.target.value);
+  });
+  $('#composeYear').addEventListener('input', event => editDraft('year', event.target.value));
+  $('#composeUndo').addEventListener('click', () => {
+    editor.undo(); composePage = 0; syncEditorInputs(); renderComposer(); $('#copyStatus').textContent = '';
+  });
+  $('#composeClear').addEventListener('click', () => {
+    editor.clear(); composePage = 0; syncEditorInputs(); renderComposer(); $('#copyStatus').textContent = ''; $('#composeText').focus();
+  });
+  $('#composeCopy').addEventListener('click', () => { if (!composing) copyText(editor.read().input.text); });
+  $('#composeMemoCopy').addEventListener('click', () => {
+    if (editor.read().result && !composing) {
+      $('#composeMemoDetails').open = true; copyText($('#composeMemo').value);
+    }
+  });
+  for (const [id, offset] of [['composePrevious', -1], ['composeNext', 1]]) {
+    $('#' + id).addEventListener('click', () => {
+      composePage += offset; activeLetter = 0; renderComposer(); $('#composePreview button')?.focus();
+    });
+  }
   localize();
 })();

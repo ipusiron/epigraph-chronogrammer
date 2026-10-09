@@ -4,12 +4,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const core = require('../core.js');
+const composer = require('../composer-core.js');
 const docs = ['README.md', 'README.en.md'].map(name => fs.readFileSync(path.join(__dirname, '..', name), 'utf8'));
 const headings = [
   ['# Epigraph Chronogrammer - クロノグラム解析・生成ツール', '# Epigraph Chronogrammer - Chronogram Analyzer & Generator'],
   ['## 🌐 デモページ', '## 🌐 Demo'], ['## 📸 スクリーンショット', '## 📸 Screenshots'],
   ['## 📜 クロノグラムの原理', '## 📜 How chronograms work'], ['## ⚙️ 機能と使い方', '## ⚙️ Features and usage'],
   ['### 解析', '### Analyze'], ['### 補助パズル', '### Extra puzzle'], ['### 生成', '### Generate'],
+  ['### 作文', '### Compose'],
   ['### 座学と表示設定', '### Learning and display preferences'],
   ['## 📝 検算できる例', '## 📝 Examples you can verify'], ['## 🎯 ユースケース', '## 🎯 Use cases'],
   ['## 🔒 安全性と限界', '## 🔒 Security and limitations'], ['## 🔗 参考資料', '## 🔗 References'],
@@ -20,6 +22,21 @@ test('README headings match completely in order and level', () => {
   docs.forEach((text, language) => assert.deepEqual(text.match(/^#{1,3} .+$/gm), headings.map(pair => pair[language])));
 });
 for (const [index, text] of docs.entries()) {
+  test(`README ${index}: draft examples and shortage recipe recalculate`, () => {
+    const rows = [...text.matchAll(/\| `([^`]+)` \| (\d+) \| (\d+) \| (-?\d+) \|/g)];
+    assert.equal(rows.length, 3);
+    for (const [, draft, year, sum, difference] of rows) {
+      const result = composer.inspect(draft, year);
+      assert.equal(result.sum, +sum);
+      assert.equal(result.difference, +difference);
+    }
+    assert.ok(text.includes('`X + V + I + I + I`'));
+    assert.equal(core.extract('X + V + I + I + I').sum, composer.inspect('MMVI', 2024).difference);
+    for (const value of ['`MMVI`', '`XVIII`', '2006', '2024', '18']) {
+      const section = text.slice(text.indexOf(index ? '## 🎯 Use cases' : '## 🎯 ユースケース'));
+      assert.ok(section.includes(value));
+    }
+  });
   test(`README ${index}: every extraction table row recalculates correctly`, () => {
     const rows = [...text.matchAll(/\| `([^`]+)` \| `(all|uppercase|positional)` \| `([^`]+)` \| (\d+) \|/g)];
     assert.equal(rows.length, 7);
