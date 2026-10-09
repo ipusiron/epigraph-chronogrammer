@@ -34,6 +34,10 @@ Use the controls at the top right to switch between Japanese and English, or lig
 
 [Dark mode at a mobile width](assets/en/mobile-dark.png)
 
+![Comparing a target of 2024 with a draft sum of 2006](assets/en/compose.png)
+
+*See the shortage of 18 and use letter buttons to adjust which letters count.*
+
 ## 📜 How chronograms work
 
 The letter values are I=1, V=5, X=10, L=50, C=100, D=500 and M=1000.
@@ -51,7 +55,7 @@ If that typography is lost, plain text may not be enough to determine which lett
 Enter text or select an example, choose a letter selection mode and press Analyze.
 Changing the input or settings clears the results and disables copying.
 Press Analyze again to calculate from the current input.
-Clear removes the input and analysis results, but not selection settings, the Generate tab's content or the operating system's clipboard.
+Clear removes the input and analysis results, but not selection settings, content in Generate or Compose, or the operating system's clipboard.
 
 | Selection mode | Letters counted |
 |---|---|
@@ -99,6 +103,45 @@ Changing the year clears the generated results and disables copying.
 If the browser refuses clipboard access, select and copy the displayed text manually.
 Choose Uppercase only when reanalyzing a generated example.
 
+“Edit this example” sends the example and target year to Compose.
+“Analyze this example” sends it to Analyze and selects Uppercase only.
+Press Analyze to run the calculation. The puzzle search range is not changed.
+Replacing existing text requires confirmation; canceling keeps the input intact.
+Sending an example to Compose can be undone with Undo.
+
+### Compose
+
+Enter a target year and your own draft to see the uppercase Roman numeral sum and its difference from the target immediately.
+The target must be an integer from 1 to 9999, and the draft is limited to 10,000 UTF-16 code units.
+The draft is independent of Analyze; editing it does not change the analysis input.
+
+| Draft | Target year | Sum | Difference (target minus sum) |
+|---|---|---|---|
+| `MMVI` | 2024 | 2006 | 18 |
+| `MML` | 2024 | 2050 | -26 |
+| `MMXXIIII` | 2024 | 2024 | 0 |
+
+For a shortage of 18, the tool displays the numerical example `X + V + I + I + I`.
+It does not insert letters automatically or determine whether the draft contains them or whether they produce natural wording.
+An excess is shown as the amount over the target; equality is reported as “Matches the target number”.
+
+Press a numeral in the preview to switch between uppercase (counted) and lowercase (not counted).
+Letter order is preserved, and non-ASCII characters are not converted.
+Tab to the letter buttons, use Left/Right and Home/End to move within the displayed part, and toggle with Enter/Space.
+Long previews show 80 numeral controls at a time, but the sum and copying use the entire draft.
+During Japanese IME composition, recalculation and copying pause until the text is committed.
+
+Undo reverses up to 50 operations involving text, the target year, letter toggles or loading a generated example.
+Ordinary typing records each input event; IME preedit changes are grouped when committed.
+Clear erases the draft and undo history while keeping the target year.
+Clear cannot be undone. It does not clear other tabs or the operating system's clipboard.
+Input and history are lost when the page is closed or reloaded; they are not saved automatically.
+
+Copy draft copies only the text. Copy verification note copies the target year, selection mode, extracted letters, sum, difference, draft and limitations.
+The note can also be displayed on screen and selected manually if clipboard access is denied.
+An empty draft, invalid year or excessive text length clears the note and disables its copy button.
+A matching sum confirms only the numerical constraint, not meaning, grammar, dating or authenticity.
+
 ### Learning and display preferences
 
 The Learn tab covers the principle, its difference from conventional Roman numerals, historical sources with references, hidden writing, writing and checking exercises, and privacy.
@@ -143,6 +186,7 @@ Ways of using this tool in particular
 - Compare transcription choices: `MilLe Domini Christi` sums to 1650 with uppercase only and 2705 with both cases. Demonstrate in class how losing typography or capitalization can change the reading
 - Check an anniversary card: generate 2024 and compare the additive `MMXXIIII` with the conventional `MMXXIV`. Reanalyze the example with Uppercase only to check the card's numerical constraint
 - Explore the limits of a sum: `CILDMI` and `IMDLIC` both give 1652. Use an unchanged sum after rearrangement to explain why it cannot detect tampering or prove authorship
+- Adjust a puzzle's difficulty: use the gap of 18 between a target of 2024 and the sum of 2006 for `MMVI` to set a letter-completion challenge. The numerical example `XVIII` adds up to 18, but check the answer's natural wording separately
 
 General uses
 
@@ -185,9 +229,11 @@ Epigraph means an inscription; Chronogrammer is a coined name for something that
 ```text
 epigraph-chronogrammer/
 ├── .github/workflows/test.yml  # Automated Node.js tests
-├── index.html                 # Analyze, Generate and Learn views
+├── index.html                 # Analyze, Generate, Compose and Learn views
 ├── core.js                    # Extraction, addition, search and generation
 ├── state.js                   # Input and result state
+├── composer-core.js           # Draft differences and letter toggling
+├── composer-state.js          # Independent draft state and undo history
 ├── script.js                  # DOM rendering and events
 ├── preferences.js             # Initial theme and language
 ├── messages.js                # Japanese and English UI strings
