@@ -3,7 +3,7 @@
   const core = window.ChronogramCore, store = window.ChronogramState.create();
   const preferences = window.ChronogramPreferences;
   const composer = window.ChronogramComposer, editor = window.ChronogramEditor.create();
-  let composePage = 0, composing = false, uiRevision = 0;
+  let composePage = 0, composing = false, uiRevision = 0, activeLetter = 0;
   let language = preferences.language;
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
@@ -158,16 +158,27 @@
       target.append(document.createTextNode(state.input.text.slice(start, position)));
       const letter = state.input.text[position], control = node('button', letter, 'letter-control');
       control.type = 'button'; control.dataset.position = String(position);
+      control.tabIndex = index === Math.min(activeLetter, part.positions.length - 1) ? 0 : -1;
       control.setAttribute('aria-pressed', String(letter === letter.toUpperCase()));
       control.setAttribute('aria-label', t('letterControl', {
         n: part.offset + index + 1, letter, value: core.VALUES[letter.toUpperCase()]
       }));
       control.addEventListener('click', () => {
+        activeLetter = index;
         const input = $('#composeText'), selection = [input.selectionStart, input.selectionEnd, input.selectionDirection];
         editor.toggle(position); syncEditorInputs(); renderComposer();
         input.setSelectionRange(...selection);
         $(`#composePreview [data-position="${position}"]`).focus();
         $('#copyStatus').textContent = '';
+      });
+      control.addEventListener('keydown', event => {
+        const next = { ArrowRight: Math.min(index + 1, part.positions.length - 1),
+          ArrowLeft: Math.max(index - 1, 0), Home: 0, End: part.positions.length - 1 }[event.key];
+        if (next === undefined) return;
+        event.preventDefault(); activeLetter = next;
+        const controls = $$('#composePreview button');
+        controls.forEach((button, i) => { button.tabIndex = i === next ? 0 : -1; });
+        controls[next].focus();
       });
       target.append(control); start = position + 1;
     });
@@ -245,7 +256,7 @@
   });
   $('#languageToggle').hidden = false;
   function editDraft(field, value) {
-    editor.set(field, value); composePage = 0; renderComposer(); $('#copyStatus').textContent = '';
+    editor.set(field, value); composePage = 0; activeLetter = 0; renderComposer(); $('#copyStatus').textContent = '';
   }
   $('#composeText').addEventListener('compositionstart', () => { composing = true; uiRevision++; renderComposer(); });
   $('#composeText').addEventListener('compositionend', event => { composing = false; editDraft('text', event.target.value); });
@@ -266,7 +277,9 @@
     }
   });
   for (const [id, offset] of [['composePrevious', -1], ['composeNext', 1]]) {
-    $('#' + id).addEventListener('click', () => { composePage += offset; renderComposer(); });
+    $('#' + id).addEventListener('click', () => {
+      composePage += offset; activeLetter = 0; renderComposer(); $('#composePreview button')?.focus();
+    });
   }
   localize();
 })();

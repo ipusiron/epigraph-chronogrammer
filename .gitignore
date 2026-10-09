@@ -26,6 +26,7 @@ yarn-debug.log*
 # Temporary files
 *.tmp
 .cache/
+__pycache__/
 
 # Environment and secrets
 .env

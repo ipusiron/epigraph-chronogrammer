@@ -6,6 +6,44 @@ def check_composer(page):
     assert page.locator('#panel-compose').is_visible()
     assert not page.locator('#panel-analyze').is_visible()
     page.locator('#composeText').fill('MMVI')
+    # Arrow navigation uses one Tab stop, without changing the text.
+    page.locator('#composePreview button').first.focus()
+    page.keyboard.press('End')
+    assert page.locator('#composePreview button').last.evaluate('(e)=>e===document.activeElement')
+    assert page.locator('#composePreview button[tabindex="0"]').count() == 1
+    page.keyboard.press('Home')
+    assert page.locator('#composePreview button').first.evaluate('(e)=>e===document.activeElement')
+    # HTML-like and non-ASCII text are retained, never interpreted or normalized.
+    text = '<img src=x onerror=alert(1)> 😀i V'
+    page.locator('#composeText').fill(text)
+    assert page.locator('#composePreview img').count() == 0
+    assert page.locator('#composePreview').text_content() == text
+    position = len('<img src=x onerror=alert(1)> ') + 2
+    page.locator(f'#composePreview [data-position="{position}"]').click()
+    assert page.locator('#composeText').input_value() == text.replace('😀i', '😀I')
+    # Large drafts are counted in full but display only a bounded set of controls.
+    page.locator('#composeText').fill('M' * 10000)
+    assert '10000000' in page.locator('#composeStatus').inner_text()
+    assert page.locator('#composePreview button').count() == 80
+    page.locator('#composeNext').click()
+    assert page.locator('#composePreview button').first.get_attribute('data-position') == '80'
+    page.locator('#composePreview button').first.click()
+    assert page.locator('#composeText').input_value()[80] == 'm'
+    assert '9999000' in page.locator('#composeStatus').inner_text()
+    page.locator('#composeUndo').click()
+    assert page.locator('#composeText').input_value() == 'M' * 10000
+    # IME preedit suppresses stale actions and does not rewrite the textarea.
+    page.locator('#composeText').fill('MMVI')
+    page.locator('#composeText').dispatch_event('compositionstart')
+    page.locator('#composeText').evaluate("e => { e.value='MMVIに'; e.dispatchEvent(new InputEvent('input',{isComposing:true,bubbles:true})); }")
+    assert page.locator('#composeMemoCopy').is_disabled()
+    assert page.locator('#composeCopy').is_disabled()
+    assert page.locator('#composePreview button').count() == 0
+    assert page.locator('#composeText').input_value() == 'MMVIに'
+    page.locator('#composeText').dispatch_event('compositionend')
+    assert '2006' in page.locator('#composeStatus').inner_text()
+    page.locator('#composeUndo').click()
+    assert page.locator('#composeText').input_value() == 'MMVI'
     page.locator('#composeYear').fill('2024')
     assert '2006' in page.locator('#composeStatus').inner_text()
     assert '18' in page.locator('#composeStatus').inner_text()
